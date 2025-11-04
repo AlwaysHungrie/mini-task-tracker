@@ -1,43 +1,39 @@
 'use client';
 
 import { useState } from 'react';
-import LoginForm from '@/components/LoginForm';
-import SignupForm from '@/components/SignupForm';
+import LoginForm from '@/components/auth/LoginForm';
+import SignupForm from '@/components/auth/SignupForm';
 
 export default function AuthPage() {
   const [activeTab, setActiveTab] = useState<'login' | 'signup'>('login');
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 px-4">
+    <div className="flex min-h-screen items-center justify-center bg-background px-4 py-12">
       <div className="w-full max-w-md">
-        <div className="rounded-lg bg-white p-8 shadow-xl">
-          <h1 className="mb-6 text-center text-3xl font-bold text-gray-900">
-            {activeTab === 'login' ? 'Login' : 'Sign Up'}
-          </h1>
-
+        <div className="rounded-lg bg-background p-8 border border-border">
           {/* Tabs */}
-          <div className="mb-6 flex gap-2 border-b border-gray-200">
+          <div className="mb-6 flex gap-1 border-b border-border">
             <button
               type="button"
               onClick={() => setActiveTab('login')}
-              className={`flex-1 py-2 text-center font-medium transition-colors ${
+              className={`flex-1 py-2 text-center text-sm font-normal transition-colors ${
                 activeTab === 'login'
-                  ? 'border-b-2 border-indigo-600 text-indigo-600'
-                  : 'text-gray-600 hover:text-gray-900'
+                  ? 'border-b-2 border-foreground text-foreground'
+                  : 'text-muted-foreground hover:text-foreground'
               }`}
             >
-              Login
+              Sign in
             </button>
             <button
               type="button"
               onClick={() => setActiveTab('signup')}
-              className={`flex-1 py-2 text-center font-medium transition-colors ${
+              className={`flex-1 py-2 text-center text-sm font-normal transition-colors ${
                 activeTab === 'signup'
-                  ? 'border-b-2 border-indigo-600 text-indigo-600'
-                  : 'text-gray-600 hover:text-gray-900'
+                  ? 'border-b-2 border-foreground text-foreground'
+                  : 'text-muted-foreground hover:text-foreground'
               }`}
             >
-              Sign Up
+              Sign up
             </button>
           </div>
 
@@ -48,4 +44,3 @@ export default function AuthPage() {
     </div>
   );
 }
-
