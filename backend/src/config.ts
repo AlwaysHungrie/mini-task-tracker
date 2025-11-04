@@ -11,3 +11,4 @@ export const REDIS_HOST = process.env.REDIS_HOST || "localhost";
 export const REDIS_PORT = parseInt(process.env.REDIS_PORT || "6379");
 export const REDIS_PASSWORD = process.env.REDIS_PASSWORD;
 export const REDIS_USERNAME = process.env.REDIS_USERNAME || "default";
+export const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:3000";
