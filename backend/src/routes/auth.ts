@@ -3,24 +3,21 @@ import { z } from "zod";
 import { User } from "../models/user.js";
 import { issueToken } from "../middleware/jwt.js";
 import { validate } from "../middleware/validate.js";
+import { asyncHandler } from "../middleware/errorHandling.js";
 
 const authRouter: Router = Router();
 
-// Validation schemas
-const registerSchema = z.object({
-  name: z.string().min(1, "Name is required").trim(),
-  email: z.email("Invalid email format").toLowerCase().trim(),
-  password: z.string().min(6, "Password must be at least 6 characters"),
-});
-
-const loginSchema = z.object({
-  email: z.email("Invalid email format").toLowerCase().trim(),
-  password: z.string().min(1, "Password is required"),
-});
-
 // Register route
-authRouter.post("/register", validate(registerSchema), async (req, res) => {
-  try {
+authRouter.post(
+  "/register",
+  validate(
+    z.object({
+      name: z.string().min(1, "Name is required").trim(),
+      email: z.email("Invalid email format").toLowerCase().trim(),
+      password: z.string().min(6, "Password must be at least 6 characters"),
+    })
+  ),
+  asyncHandler(async (req, res) => {
     const { name, email, password } = req.body;
 
     // Check if user already exists
@@ -54,15 +51,19 @@ authRouter.post("/register", validate(registerSchema), async (req, res) => {
       },
       token,
     });
-  } catch (error) {
-    console.error("Registration error:", error);
-    res.status(500).json({ error: "Failed to register user" });
-  }
-});
+  })
+);
 
 // Login route
-authRouter.post("/login", validate(loginSchema), async (req, res) => {
-  try {
+authRouter.post(
+  "/login",
+  validate(
+    z.object({
+      email: z.email("Invalid email format").toLowerCase().trim(),
+      password: z.string().min(1, "Password is required"),
+    })
+  ),
+  asyncHandler(async (req, res) => {
     const { email, password } = req.body;
 
     // Find user and include password field
@@ -91,10 +92,7 @@ authRouter.post("/login", validate(loginSchema), async (req, res) => {
       },
       token,
     });
-  } catch (error) {
-    console.error("Login error:", error);
-    res.status(500).json({ error: "Failed to login" });
-  }
-});
+  })
+);
 
 export default authRouter;

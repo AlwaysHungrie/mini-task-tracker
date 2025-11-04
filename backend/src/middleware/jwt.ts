@@ -13,14 +13,14 @@ export function issueToken(userId: string, email: string): string {
     email,
   };
 
-  return jwt.sign(payload, JWT_SECRET, {
+  return jwt.sign(payload, JWT_SECRET!, {
     expiresIn: JWT_EXPIRES_IN,
   } as SignOptions);
 }
 
 export function verifyToken(token: string): JWTPayload | null {
   try {
-    const decoded = jwt.verify(token, JWT_SECRET) as JWTPayload;
+    const decoded = jwt.verify(token, JWT_SECRET!) as JWTPayload;
     return decoded;
   } catch (error) {
     return null;
