@@ -63,4 +63,5 @@ userSchema.methods.comparePassword = async function (
   return await bcrypt.compare(candidatePassword, this.password);
 };
 
+// skipping index as email is already unique index
 export const User = mongoose.model<IUser>("User", userSchema);
