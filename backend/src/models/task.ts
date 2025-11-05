@@ -1,7 +1,7 @@
 import mongoose, { Schema, Document } from "mongoose";
 import type { IUser } from "./user.js";
 
-enum TaskStatus {
+export enum TaskStatus {
   PENDING = "pending",
   COMPLETED = "completed",
 }

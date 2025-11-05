@@ -12,14 +12,26 @@ import { TaskResponse } from "@/lib/types/api";
 
 export default function HomePage() {
   const { isAuthenticated } = useUser();
-  const { tasks, isLoading, toggleTaskStatus, deleteTask, filters, setFilters, clearFilters } = useTasks();
+  const {
+    tasks,
+    isLoading,
+    toggleTaskStatus,
+    deleteTask,
+    filters,
+    setFilters,
+    clearFilters,
+  } = useTasks();
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState<TaskResponse | null>(null);
-  
+
   // Local state for filter inputs
-  const [statusFilter, setStatusFilter] = useState<string>(filters.status || "");
-  const [dueDateFilter, setDueDateFilter] = useState<string>(filters.dueDate || "");
+  const [statusFilter, setStatusFilter] = useState<string>(
+    filters.status || ""
+  );
+  const [dueDateFilter, setDueDateFilter] = useState<string>(
+    filters.dueDate || ""
+  );
 
   // Sync local state with context filters
   useEffect(() => {
@@ -73,16 +85,9 @@ export default function HomePage() {
   if (!isAuthenticated) {
     return (
       <div className="flex items-center justify-center min-h-[calc(100vh-4rem)]">
-        <p className="text-muted-foreground">Please log in to view your tasks</p>
-      </div>
-    );
-  }
-
-  // Show loading state
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-[calc(100vh-4rem)]">
-        <p className="text-muted-foreground">Loading tasks...</p>
+        <p className="text-muted-foreground">
+          Please log in to view your tasks
+        </p>
       </div>
     );
   }
@@ -137,7 +142,9 @@ export default function HomePage() {
         {hasActiveFilters && (
           <div className="mt-3 text-sm text-muted-foreground">
             Active filters:{" "}
-            {filters.status && <span className="font-medium">Status: {filters.status}</span>}
+            {filters.status && (
+              <span className="font-medium">Status: {filters.status}</span>
+            )}
             {filters.dueDate && (
               <>
                 {filters.status && ", "}
@@ -160,69 +167,82 @@ export default function HomePage() {
               </tr>
             </thead>
             <tbody>
-              {tasks.map((task) => (
-                <tr
-                  key={task.id}
-                  className="border-b last:border-b-0 hover:bg-muted/30 transition-colors"
-                >
-                  <td className="p-4">
-                    <p
-                      className={`font-medium ${
-                        task.status === "completed"
-                          ? "line-through text-muted-foreground"
-                          : ""
-                      }`}
-                    >
-                      {task.description}
-                    </p>
-                  </td>
-                  <td className="p-4 text-sm text-muted-foreground">
-                    {new Date(task.dueDate).toLocaleDateString()}
-                  </td>
-                  <td className="p-4">
-                    <span
-                      className={`inline-block px-2 py-1 text-xs font-medium rounded ${
-                        task.status === "completed"
-                          ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
-                          : "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200"
-                      }`}
-                    >
-                      {task.status}
-                    </span>
-                  </td>
-                  <td className="p-4">
-                    <div className="flex justify-end gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleToggleStatus(task.id)}
-                      >
-                        {task.status === "completed" ? "Mark Pending" : "Mark Complete"}
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleEdit(task)}
-                      >
-                        Edit
-                      </Button>
-                      <Button
-                        variant="destructive"
-                        size="sm"
-                        onClick={() => handleDelete(task.id)}
-                      >
-                        Delete
-                      </Button>
-                    </div>
+              {isLoading ? (
+                <tr>
+                  <td colSpan={4} className="text-center p-4">
+                    <p className="text-muted-foreground">Loading tasks...</p>
                   </td>
                 </tr>
-              ))}
+              ) : (
+                tasks.map((task) => (
+                  <tr
+                    key={task.id}
+                    className="border-b last:border-b-0 hover:bg-muted/30 transition-colors"
+                  >
+                    <td className="p-4">
+                      <p
+                        className={`font-medium ${
+                          task.status === "completed"
+                            ? "line-through text-muted-foreground"
+                            : ""
+                        }`}
+                      >
+                        {task.description}
+                      </p>
+                    </td>
+                    <td className="p-4 text-sm text-muted-foreground">
+                      {new Date(task.dueDate).toLocaleDateString()}
+                    </td>
+                    <td className="p-4">
+                      <span
+                        className={`inline-block px-2 py-1 text-xs font-medium rounded ${
+                          task.status === "completed"
+                            ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
+                            : "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200"
+                        }`}
+                      >
+                        {task.status}
+                      </span>
+                    </td>
+                    <td className="p-4">
+                      <div className="flex justify-end gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleToggleStatus(task.id)}
+                        >
+                          {task.status === "completed"
+                            ? "Mark Pending"
+                            : "Mark Complete"}
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleEdit(task)}
+                        >
+                          Edit
+                        </Button>
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={() => handleDelete(task.id)}
+                        >
+                          Delete
+                        </Button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
       </div>
 
-      <CreateTaskDialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen} />
+      <CreateTaskDialog
+        open={isCreateDialogOpen}
+        onOpenChange={setIsCreateDialogOpen}
+      />
       <EditTaskDialog
         open={isEditDialogOpen}
         onOpenChange={setIsEditDialogOpen}

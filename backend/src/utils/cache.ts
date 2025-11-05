@@ -63,6 +63,28 @@ async function waitForLock(
   return false; // Lock still held after max retries
 }
 
+/**
+ * Reviver function for JSON.parse to convert date strings back to Date objects
+ * JSON.stringify converts Date objects to ISO 8601 strings, so we need to convert them back
+ */
+export function dateReviver(key: string, value: any): any {
+  // JSON.stringify converts Date objects to ISO 8601 strings like "2024-12-31T00:00:00.000Z"
+  // We detect these by checking if the string matches ISO date format and parses to a valid date
+  if (typeof value === "string") {
+    // Check if it looks like an ISO date string
+    // Matches: "2024-12-31" or "2024-12-31T00:00:00.000Z" or similar ISO formats
+    const isoDatePattern = /^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}:\d{2}(\.\d{3})?Z)?$/;
+    if (isoDatePattern.test(value)) {
+      const date = new Date(value);
+      // Only convert if it's a valid date
+      if (!isNaN(date.getTime())) {
+        return date;
+      }
+    }
+  }
+  return value;
+}
+
 export async function getCachedTasks(
   userId: string,
   filters?: TaskFilterParams
@@ -74,7 +96,7 @@ export async function getCachedTasks(
     // Try to get from cache first
     const cached = await redisClient.get(cacheKey);
     if (cached) {
-      return JSON.parse(cached) as GetTasksResponse;
+      return JSON.parse(cached, dateReviver) as GetTasksResponse;
     }
 
     // Cache miss - try to acquire lock to prevent stampede
@@ -86,7 +108,7 @@ export async function getCachedTasks(
         // Check cache again after lock is released
         const retryCached = await redisClient.get(cacheKey);
         if (retryCached) {
-          return JSON.parse(retryCached) as GetTasksResponse;
+          return JSON.parse(retryCached, dateReviver) as GetTasksResponse;
         }
       }
     }

@@ -13,7 +13,7 @@ authRouter.post(
   validate(
     z.object({
       name: z.string().min(1, "Name is required").trim(),
-      email: z.email("Invalid email format").toLowerCase().trim(),
+      email: z.string().trim().toLowerCase().email("Invalid email format"),
       password: z.string().min(6, "Password must be at least 6 characters"),
     })
   ),
@@ -59,7 +59,7 @@ authRouter.post(
   "/login",
   validate(
     z.object({
-      email: z.email("Invalid email format").toLowerCase().trim(),
+      email: z.string().trim().toLowerCase().email("Invalid email format"),
       password: z.string().min(1, "Password is required"),
     })
   ),

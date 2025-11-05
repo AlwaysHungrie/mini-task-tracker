@@ -1,5 +1,10 @@
 import { Redis } from "ioredis";
-import { REDIS_HOST, REDIS_PORT, REDIS_PASSWORD, REDIS_USERNAME } from "../config.js";
+import {
+  REDIS_HOST,
+  REDIS_PORT,
+  REDIS_PASSWORD,
+  REDIS_USERNAME,
+} from "../config.js";
 
 export const redisClient = new Redis({
   host: REDIS_HOST,
