@@ -31,14 +31,51 @@ tasksRouter.get(
   "/",
   asyncHandler(
     async (req: Request, res: Response<GetTasksResponse | ErrorResponse>) => {
-      // Try to get from cache first
-      const cached = await getCachedTasks(req.userId!);
-      if (cached) {
-        return res.json(cached);
+      const { status, dueDate } = req.query;
+      
+      // Build filter object
+      const filter: any = { owner: req.userId };
+
+      // Filter by status if provided
+      if (status) {
+        if (status === "pending" || status === "completed") {
+          filter.status = status;
+        } else {
+          return res.status(400).json({
+            error: "Invalid status. Must be 'pending' or 'completed'",
+          });
+        }
       }
 
-      // If not in cache, fetch from database
-      const tasks = await Task.find({ owner: req.userId }).sort({
+      // Filter by exact due date if provided
+      if (dueDate) {
+        const date = new Date(dueDate as string);
+        if (isNaN(date.getTime())) {
+          return res.status(400).json({
+            error: "Invalid dueDate format. Use YYYY-MM-DD",
+          });
+        }
+        // Set time to start and end of day for exact date match
+        const startOfDay = new Date(date);
+        startOfDay.setHours(0, 0, 0, 0);
+        const endOfDay = new Date(date);
+        endOfDay.setHours(23, 59, 59, 999);
+        filter.dueDate = { $gte: startOfDay, $lte: endOfDay };
+      }
+
+      // Only use cache if no filters are applied (unfiltered queries)
+      const hasFilters = status || dueDate;
+      
+      if (!hasFilters) {
+        // Try to get from cache first
+        const cached = await getCachedTasks(req.userId!);
+        if (cached) {
+          return res.json(cached);
+        }
+      }
+
+      // If not in cache or filters are applied, fetch from database
+      const tasks = await Task.find(filter).sort({
         createdAt: -1,
       });
 
@@ -54,8 +91,10 @@ tasksRouter.get(
         ),
       };
 
-      // Cache the result
-      await setCachedTasks(req.userId!, response);
+      // Cache the result only if no filters were applied
+      if (!hasFilters) {
+        await setCachedTasks(req.userId!, response);
+      }
 
       res.json(response);
     }

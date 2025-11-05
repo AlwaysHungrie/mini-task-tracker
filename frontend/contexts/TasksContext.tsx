@@ -13,10 +13,18 @@ import {
   TaskStatus,
 } from "@/lib/types/api";
 
+export interface TaskFilters {
+  status?: "pending" | "completed";
+  dueDate?: string; // YYYY-MM-DD format - exact date match
+}
+
 interface TasksContextType {
   tasks: TaskResponse[];
   isLoading: boolean;
   error: Error | null;
+  filters: TaskFilters;
+  setFilters: (filters: TaskFilters) => void;
+  clearFilters: () => void;
   createTask: (task: CreateTaskRequest) => Promise<void>;
   updateTask: (id: string, task: UpdateTaskRequest) => Promise<void>;
   toggleTaskStatus: (id: string) => Promise<void>;
@@ -28,15 +36,25 @@ const TasksContext = createContext<TasksContextType | undefined>(undefined);
 export function TasksProvider({ children }: { children: ReactNode }) {
   const { token, isAuthenticated } = useUser();
   const queryClient = useQueryClient();
+  const [filters, setFiltersState] = React.useState<TaskFilters>({});
 
-  // Fetch tasks
+  // Fetch tasks with filters
   const { data, isLoading, error } = useQuery<GetTasksResponse>({
-    queryKey: ["tasks"],
+    queryKey: ["tasks", filters],
     queryFn: async () => {
       if (!token) {
         throw new Error("Not authenticated");
       }
-      const response = await fetch("/api/tasks", {
+      
+      // Build query string from filters
+      const queryParams = new URLSearchParams();
+      if (filters.status) queryParams.set("status", filters.status);
+      if (filters.dueDate) queryParams.set("dueDate", filters.dueDate);
+
+      const queryString = queryParams.toString();
+      const endpoint = queryString ? `/api/tasks?${queryString}` : "/api/tasks";
+
+      const response = await fetch(endpoint, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -48,6 +66,14 @@ export function TasksProvider({ children }: { children: ReactNode }) {
     },
     enabled: isAuthenticated,
   });
+
+  const setFilters = React.useCallback((newFilters: TaskFilters) => {
+    setFiltersState(newFilters);
+  }, []);
+
+  const clearFilters = React.useCallback(() => {
+    setFiltersState({});
+  }, []);
 
   // Create task mutation with optimistic updates
   const createTaskMutation = useMutation({
@@ -77,6 +103,7 @@ export function TasksProvider({ children }: { children: ReactNode }) {
       // Snapshot the previous value
       const previousTasks = queryClient.getQueryData<GetTasksResponse>([
         "tasks",
+        filters,
       ]);
 
       // Optimistically update to the new value
@@ -88,7 +115,7 @@ export function TasksProvider({ children }: { children: ReactNode }) {
           dueDate: newTask.dueDate,
           createdAt: new Date().toISOString(),
         };
-        queryClient.setQueryData<GetTasksResponse>(["tasks"], {
+        queryClient.setQueryData<GetTasksResponse>(["tasks", filters], {
           tasks: [...previousTasks.tasks, optimisticTask],
         });
       }
@@ -99,7 +126,7 @@ export function TasksProvider({ children }: { children: ReactNode }) {
     onError: (err, newTask, context) => {
       // If the mutation fails, use the context returned from onMutate to roll back
       if (context?.previousTasks) {
-        queryClient.setQueryData(["tasks"], context.previousTasks);
+        queryClient.setQueryData(["tasks", filters], context.previousTasks);
       }
     },
     onSuccess: (data) => {
@@ -137,13 +164,14 @@ export function TasksProvider({ children }: { children: ReactNode }) {
       await queryClient.cancelQueries({ queryKey: ["tasks"] });
       const previousTasks = queryClient.getQueryData<GetTasksResponse>([
         "tasks",
+        filters,
       ]);
 
       if (previousTasks) {
         const updatedTasks = previousTasks.tasks.map((t) =>
           t.id === id ? { ...t, ...task } : t
         );
-        queryClient.setQueryData<GetTasksResponse>(["tasks"], {
+        queryClient.setQueryData<GetTasksResponse>(["tasks", filters], {
           tasks: updatedTasks,
         });
       }
@@ -152,7 +180,7 @@ export function TasksProvider({ children }: { children: ReactNode }) {
     },
     onError: (err, variables, context) => {
       if (context?.previousTasks) {
-        queryClient.setQueryData(["tasks"], context.previousTasks);
+        queryClient.setQueryData(["tasks", filters], context.previousTasks);
       }
     },
     onSuccess: () => {
@@ -162,18 +190,16 @@ export function TasksProvider({ children }: { children: ReactNode }) {
 
   // Toggle task status mutation
   const toggleTaskStatusMutation = useMutation({
-    mutationFn: async (id: string): Promise<UpdateTaskResponse> => {
+    mutationFn: async ({
+      id,
+      newStatus,
+    }: {
+      id: string;
+      newStatus: TaskStatus;
+    }): Promise<UpdateTaskResponse> => {
       if (!token) {
         throw new Error("Not authenticated");
       }
-      const previousTasks = queryClient.getQueryData<GetTasksResponse>([
-        "tasks",
-      ]);
-      const task = previousTasks?.tasks.find((t) => t.id === id);
-      if (!task) {
-        throw new Error("Task not found");
-      }
-      const newStatus = task.status === "completed" ? "pending" : "completed";
 
       const response = await fetch(`/api/tasks/${id}`, {
         method: "PUT",
@@ -188,33 +214,27 @@ export function TasksProvider({ children }: { children: ReactNode }) {
       }
       return response.json();
     },
-    onMutate: async (id) => {
+    onMutate: async ({ id, newStatus }: { id: string; newStatus: TaskStatus }) => {
       await queryClient.cancelQueries({ queryKey: ["tasks"] });
       const previousTasks = queryClient.getQueryData<GetTasksResponse>([
         "tasks",
+        filters,
       ]);
 
       if (previousTasks) {
         const updatedTasks = previousTasks.tasks.map((t) =>
-          t.id === id
-            ? {
-                ...t,
-                status: (t.status === "completed"
-                  ? "pending"
-                  : "completed") as TaskStatus,
-              }
-            : t
+          t.id === id ? { ...t, status: newStatus } : t
         );
-        queryClient.setQueryData<GetTasksResponse>(["tasks"], {
+        queryClient.setQueryData<GetTasksResponse>(["tasks", filters], {
           tasks: updatedTasks,
         });
       }
 
       return { previousTasks };
     },
-    onError: (err, id, context) => {
+    onError: (err, variables, context) => {
       if (context?.previousTasks) {
-        queryClient.setQueryData(["tasks"], context.previousTasks);
+        queryClient.setQueryData(["tasks", filters], context.previousTasks);
       }
     },
     onSuccess: () => {
@@ -242,11 +262,12 @@ export function TasksProvider({ children }: { children: ReactNode }) {
       await queryClient.cancelQueries({ queryKey: ["tasks"] });
       const previousTasks = queryClient.getQueryData<GetTasksResponse>([
         "tasks",
+        filters,
       ]);
 
       if (previousTasks) {
         const updatedTasks = previousTasks.tasks.filter((t) => t.id !== id);
-        queryClient.setQueryData<GetTasksResponse>(["tasks"], {
+        queryClient.setQueryData<GetTasksResponse>(["tasks", filters], {
           tasks: updatedTasks,
         });
       }
@@ -255,7 +276,7 @@ export function TasksProvider({ children }: { children: ReactNode }) {
     },
     onError: (err, id, context) => {
       if (context?.previousTasks) {
-        queryClient.setQueryData(["tasks"], context.previousTasks);
+        queryClient.setQueryData(["tasks", filters], context.previousTasks);
       }
     },
     onSuccess: () => {
@@ -267,6 +288,9 @@ export function TasksProvider({ children }: { children: ReactNode }) {
     tasks: data?.tasks || [],
     isLoading,
     error: error as Error | null,
+    filters,
+    setFilters,
+    clearFilters,
     createTask: async (task: CreateTaskRequest) => {
       await createTaskMutation.mutateAsync(task);
     },
@@ -274,7 +298,16 @@ export function TasksProvider({ children }: { children: ReactNode }) {
       await updateTaskMutation.mutateAsync({ id, task });
     },
     toggleTaskStatus: async (id: string) => {
-      await toggleTaskStatusMutation.mutateAsync(id);
+      // Get current task status before optimistic update
+      const currentTasks = queryClient.getQueryData<GetTasksResponse>(["tasks", filters]);
+      const task = currentTasks?.tasks.find((t) => t.id === id);
+      if (!task) {
+        throw new Error("Task not found");
+      }
+      const newStatus = (task.status === "completed"
+        ? "pending"
+        : "completed") as TaskStatus;
+      await toggleTaskStatusMutation.mutateAsync({ id, newStatus });
     },
     deleteTask: async (id: string) => {
       await deleteTaskMutation.mutateAsync(id);

@@ -1,19 +1,50 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useUser } from "@/contexts/UserContext";
-import { useTasks } from "@/contexts/TasksContext";
+import { useTasks, TaskFilters } from "@/contexts/TasksContext";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { CreateTaskDialog } from "@/components/CreateTaskDialog";
 import { EditTaskDialog } from "@/components/EditTaskDialog";
 import { TaskResponse } from "@/lib/types/api";
 
 export default function HomePage() {
   const { isAuthenticated } = useUser();
-  const { tasks, isLoading, toggleTaskStatus, deleteTask } = useTasks();
+  const { tasks, isLoading, toggleTaskStatus, deleteTask, filters, setFilters, clearFilters } = useTasks();
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState<TaskResponse | null>(null);
+  
+  // Local state for filter inputs
+  const [statusFilter, setStatusFilter] = useState<string>(filters.status || "");
+  const [dueDateFilter, setDueDateFilter] = useState<string>(filters.dueDate || "");
+
+  // Sync local state with context filters
+  useEffect(() => {
+    setStatusFilter(filters.status || "");
+    setDueDateFilter(filters.dueDate || "");
+  }, [filters]);
+
+  const handleApplyFilters = () => {
+    const newFilters: TaskFilters = {};
+    if (statusFilter) {
+      newFilters.status = statusFilter as "pending" | "completed";
+    }
+    if (dueDateFilter) {
+      newFilters.dueDate = dueDateFilter;
+    }
+    setFilters(newFilters);
+  };
+
+  const handleClearFilters = () => {
+    setStatusFilter("");
+    setDueDateFilter("");
+    clearFilters();
+  };
+
+  const hasActiveFilters = filters.status || filters.dueDate;
 
   const handleEdit = (task: TaskResponse) => {
     setSelectedTask(task);
@@ -56,28 +87,65 @@ export default function HomePage() {
     );
   }
 
-  // Show message if no tasks
-  if (tasks.length === 0) {
-    return (
-      <div className="container mx-auto px-4 py-8">
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-2xl font-bold">Tasks</h1>
-          <Button onClick={() => setIsCreateDialogOpen(true)}>Create Task</Button>
-        </div>
-        <div className="flex items-center justify-center min-h-[400px]">
-          <p className="text-muted-foreground">No tasks yet. Create your first task!</p>
-        </div>
-        <CreateTaskDialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen} />
-      </div>
-    );
-  }
-
   // Show tasks as rows
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold">Tasks</h1>
         <Button onClick={() => setIsCreateDialogOpen(true)}>Create Task</Button>
+      </div>
+
+      {/* Filter Section */}
+      <div className="border rounded-lg p-4 mb-6 bg-muted/30">
+        <div className="flex items-end gap-4 flex-wrap">
+          <div className="flex-1 min-w-[200px]">
+            <Label htmlFor="status-filter">Status</Label>
+            <select
+              id="status-filter"
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="w-full mt-1 px-3 py-2 border rounded-md bg-background text-foreground"
+            >
+              <option value="">All</option>
+              <option value="pending">Pending</option>
+              <option value="completed">Completed</option>
+            </select>
+          </div>
+
+          <div className="flex-1 min-w-[200px]">
+            <Label htmlFor="due-date-filter">Due Date</Label>
+            <Input
+              id="due-date-filter"
+              type="date"
+              value={dueDateFilter}
+              onChange={(e) => setDueDateFilter(e.target.value)}
+              className="mt-1"
+            />
+          </div>
+
+          <div className="flex gap-2">
+            <Button onClick={handleApplyFilters} variant="default">
+              Apply Filters
+            </Button>
+            {hasActiveFilters && (
+              <Button onClick={handleClearFilters} variant="outline">
+                Clear
+              </Button>
+            )}
+          </div>
+        </div>
+        {hasActiveFilters && (
+          <div className="mt-3 text-sm text-muted-foreground">
+            Active filters:{" "}
+            {filters.status && <span className="font-medium">Status: {filters.status}</span>}
+            {filters.dueDate && (
+              <>
+                {filters.status && ", "}
+                <span className="font-medium">Due Date: {filters.dueDate}</span>
+              </>
+            )}
+          </div>
+        )}
       </div>
 
       <div className="border rounded-lg overflow-hidden">
