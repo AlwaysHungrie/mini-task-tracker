@@ -45,7 +45,13 @@ const taskSchema = new Schema<ITask>(
   }
 );
 
-taskSchema.index({ owner: 1 }); // incase we want to all tasks for a specific owner
-taskSchema.index({ status: 1 }); // incase we want to all tasks by a status
-taskSchema.index({ owner: 1, status: 1 }); // incase we want to all tasks for a specific owner and status
+// Indexes for query patterns:
+// 1. Base query: get all tasks for a user, sorted by createdAt (descending)
+taskSchema.index({ owner: 1, createdAt: -1 });
+
+// 2. Status filter: get tasks filtered by status, sorted by createdAt (descending)
+taskSchema.index({ owner: 1, status: 1, createdAt: -1 });
+
+// 3. DueDate filter: get tasks filtered by dueDate range, sorted by createdAt (descending)
+taskSchema.index({ owner: 1, dueDate: 1, createdAt: -1 });
 export const Task = mongoose.model<ITask>("Task", taskSchema);

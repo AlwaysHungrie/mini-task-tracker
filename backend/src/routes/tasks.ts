@@ -36,10 +36,14 @@ tasksRouter.get(
       // Build filter object
       const filter: any = { owner: req.userId };
 
+      // Build cache filter params
+      const cacheFilters: { status?: "pending" | "completed"; dueDate?: string } = {};
+
       // Filter by status if provided
       if (status) {
         if (status === "pending" || status === "completed") {
           filter.status = status;
+          cacheFilters.status = status as "pending" | "completed";
         } else {
           return res.status(400).json({
             error: "Invalid status. Must be 'pending' or 'completed'",
@@ -61,20 +65,23 @@ tasksRouter.get(
         const endOfDay = new Date(date);
         endOfDay.setHours(23, 59, 59, 999);
         filter.dueDate = { $gte: startOfDay, $lte: endOfDay };
-      }
-
-      // Only use cache if no filters are applied (unfiltered queries)
-      const hasFilters = status || dueDate;
-      
-      if (!hasFilters) {
-        // Try to get from cache first
-        const cached = await getCachedTasks(req.userId!);
-        if (cached) {
-          return res.json(cached);
+        // Store normalized date string for cache key (YYYY-MM-DD)
+        const normalizedDate = (dueDate as string).split("T")[0];
+        if (normalizedDate) {
+          cacheFilters.dueDate = normalizedDate;
         }
       }
 
-      // If not in cache or filters are applied, fetch from database
+      // Try to get from cache first (works for both filtered and unfiltered queries)
+      const cached = await getCachedTasks(
+        req.userId!,
+        Object.keys(cacheFilters).length > 0 ? cacheFilters : undefined
+      );
+      if (cached) {
+        return res.json(cached);
+      }
+
+      // If not in cache, fetch from database
       const tasks = await Task.find(filter).sort({
         createdAt: -1,
       });
@@ -91,10 +98,12 @@ tasksRouter.get(
         ),
       };
 
-      // Cache the result only if no filters were applied
-      if (!hasFilters) {
-        await setCachedTasks(req.userId!, response);
-      }
+      // Cache the result (for both filtered and unfiltered queries)
+      await setCachedTasks(
+        req.userId!,
+        response,
+        Object.keys(cacheFilters).length > 0 ? cacheFilters : undefined
+      );
 
       res.json(response);
     }
