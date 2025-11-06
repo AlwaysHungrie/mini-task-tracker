@@ -1,6 +1,7 @@
 # Mini Task Tracker
 
 Demo Links:
+(visit backend first as it gets paused by render due to inactivity from time to time)
 
 - Frontend (main): [https://mini-task-tracker-s6ucuto4c-pineappls-projects.vercel.app/](https://mini-task-tracker-s6ucuto4c-pineappls-projects.vercel.app/)
 - Backend (api): [https://mini-task-tracker-nmfi.onrender.com/](https://mini-task-tracker-nmfi.onrender.com/)
